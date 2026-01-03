@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Happy Birthday My Love</title>
+    <link href="https://fonts.googleapis.com/css2?family=Mali:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #ffe6eb;
+            --primary: #ff8fa3;
+            --secondary: #ffccd5;
+            --text: #6d4c41;
+            --envelope-color: #ff8fa3;
+            --envelope-flap: #ff748c;
+        }
+
+        /* รีเซ็ตค่าพื้นฐาน */
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            margin: 0; padding: 0;
+            font-family: 'Mali', cursive;
+            background-color: var(--bg-color);
+            color: var(--text);
+            overflow: hidden; /* ห้ามเลื่อนหน้าจอ */
+            
+            /* ✅ ใช้ dvh เพื่อให้เต็มจอจริงแม้มี Address Bar */
+            height: 100dvh; 
+            width: 100vw;
+            
+            position: relative;
+            touch-action: manipulation;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        /* Background Floating Hearts */
+        .bg-hearts { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; overflow: hidden; }
+        .heart-bg { position: absolute; bottom: -50px; color: rgba(255, 255, 255, 0.6); font-size: 24px; animation: floatUp 10s linear infinite; }
+
+        /* Main Sections */
+        .section {
+            display: none; 
+            width: 100%; 
+            height: 100%; /* เต็มความสูง dvh */
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center;
+            position: absolute; top: 0; left: 0; z-index: 10;
+            transition: opacity 0.8s;
+            padding: 20px; /* กันขอบชิดเกินไป */
+        }
+        .section.active { display: flex; animation: fadeIn 0.8s ease-in; }
+
+        /* --- Landscape Warning (ตัวเตือนเมื่อหมุนจอ) --- */
+        #rotate-warning {
+            display: none;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-color); z-index: 9999;
+            flex-direction: column; justify-content: center; align-items: center;
+            text-align: center; color: var(--text);
+        }
+        /* ถ้าหน้าจอกว้างกว่าสูง (แนวนอน) ให้แสดงคำเตือน */
+        @media screen and (orientation: landscape) {
+            #rotate-warning { display: flex; }
+            .section { display: none !important; }
+        }
+
+        /* --- 1. Password Screen --- */
+        .pass-hero-img {
+            width: 160px; margin-bottom: 20px;
+            filter: drop-shadow(0 5px 15px rgba(255,143,163,0.4));
+            animation: floatHero 3s ease-in-out infinite;
+        }
+        .pass-dots { display: flex; gap: 15px; margin-bottom: 20px; }
+        .dot { width: 18px; height: 18px; background: white; border-radius: 50%; transition: 0.3s; border: 3px solid var(--primary); }
+        .dot.active { background: var(--primary); transform: scale(1.2); box-shadow: 0 0 10px var(--primary); }
+        
+        /* ปรับ Numpad ให้ยืดหยุ่น */
+        .numpad { 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); /* แบ่ง 3 คอลัมน์เท่ากัน */
+            gap: 15px; 
+            margin-top: 15px; 
+            width: 100%;
+            max-width: 300px; /* ไม่ให้กว้างเกินไป */
+        }
+        .num-btn {
+            width: 100%; aspect-ratio: 1/1; /* ให้เป็นสี่เหลี่ยมจัตุรัสเสมอ */
+            border-radius: 50%; border: none;
+            background: rgba(255,255,255,0.95); font-size: 24px; color: var(--primary);
+            box-shadow: 0 5px 15px rgba(255,143,163,0.2); cursor: pointer; transition: 0.2s;
+            font-family: 'Mali', cursive; font-weight: bold;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .num-btn:active { transform: scale(0.9); background: var(--secondary); }
+        #wrong-msg { height: 25px; color: #e91e63; font-weight: bold; }
+
+        /* --- 2. Cake Screen --- */
+        .cake-wrapper { 
+            position: relative; 
+            width: 80%; /* ใช้ % เพื่อให้พอดีจอมือถือ */
+            max-width: 300px;
+            aspect-ratio: 1/1;
+            display: flex; justify-content: center; align-items: flex-end; 
+            cursor: pointer; margin-top: 20px;
+        }
+        .cake-img { width: 100%; filter: drop-shadow(0 10px 15px rgba(0,0,0,0.1)); z-index: 2; }
+        .candles-group { position: absolute; top: -10%; display: flex; gap: 6%; z-index: 1; width: 60%; justify-content: center; }
+        .candle { width: 14px; height: 65px; background: repeating-linear-gradient(45deg, #fff, #fff 5px, #b2ebf2 5px, #b2ebf2 10px); position: relative; border-radius: 4px; }
+        .candle.center { height: 80px; top: -10px; background: repeating-linear-gradient(45deg, #fff, #fff 5px, #ff8fa3 5px, #ff8fa3 10px); }
+        .flame {
+            position: absolute; top: -25px; left: 50%; transform: translateX(-50%);
+            width: 18px; height: 28px; background: radial-gradient(ellipse at bottom, #ffeb3b, #ff9800);
+            border-radius: 50% 50% 20% 20%; animation: flicker 0.1s infinite alternate; transition: 0.5s;
+            box-shadow: 0 0 10px #ffeb3b;
+        }
+        .flame.out { opacity: 0; transform: translateX(-50%) scale(0.1); }
+        #cheer-msg { margin-top:30px; height:30px; font-size: 20px; font-weight:bold; color:var(--primary); text-shadow: 1px 1px white; }
+
+        /* --- 3. Balloon Screen --- */
+        .balloon {
+            width: 100px; height: 120px; background: #ff8fa3; border-radius: 50%;
+            position: absolute; cursor: pointer; display: flex; justify-content: center; align-items: center;
+            animation: float 3s ease-in-out infinite; box-shadow: inset -10px -10px 20px rgba(0,0,0,0.1), 5px 10px 15px rgba(0,0,0,0.1);
+            font-weight: bold; color: white; text-shadow: 1px 1px rgba(0,0,0,0.2);
+        }
+        .balloon::before { content:''; position:absolute; top:20px; left:25px; width:20px; height:30px; background:rgba(255,255,255,0.5); border-radius:50%; transform:rotate(45deg); }
+        .balloon::after { content:''; position: absolute; bottom: -50px; width: 3px; height: 50px; background: rgba(0,0,0,0.3); }
+        .balloon.popped { transform: scale(1.5); opacity: 0; pointer-events: none; transition: 0.3s; }
+        .pop-text { position: absolute; background: white; padding: 12px 25px; border-radius: 30px; opacity: 0; transform: translateY(30px); transition: 0.5s; pointer-events: none; font-weight: bold; color: var(--text); box-shadow: 0 5px 20px rgba(0,0,0,0.15); white-space: nowrap; z-index: 20; }
+        .balloon.popped + .pop-text { opacity: 1; transform: translateY(-60px) scale(1.1); }
+
+        /* --- 4. Gallery Screen --- */
+        .rope { width: 100%; height: 4px; background: #795548; margin: 30px 0; position: relative; transform: rotate(-2deg); box-shadow: 0 3px 5px rgba(0,0,0,0.2); }
+        .photo-clip { 
+            position: absolute; top: 15px; padding: 8px; background: white; 
+            box-shadow: 0 5px 10px rgba(0,0,0,0.15); transition: 0.3s; 
+            width: 35%; /* ปรับขนาดรูปตาม % หน้าจอ */
+            max-width: 150px;
+            border-radius: 5px;
+        }
+        .photo-clip:hover { transform: scale(1.15) rotate(0deg) !important; z-index: 50; }
+        .photo-clip::before { content:''; width: 10px; height: 25px; background: #5d4037; position: absolute; top: -20px; left: 50%; transform: translateX(-50%); border-radius: 4px; }
+        .photo-clip img { width: 100%; border-radius: 3px; display: block; }
+        .btn-next { margin-top:250px; padding:15px 40px; border-radius:40px; background:var(--primary); color:white; border:none; font-size:20px; cursor:pointer; box-shadow:0 5px 15px rgba(255,143,163,0.5); font-family: 'Mali'; transition: 0.2s; }
+
+        /* --- 5. Letter Screen --- */
+        .envelope-container {
+            position: relative; 
+            width: 90%; max-width: 320px; /* ให้ซองยืดตามจอมือถือ */
+            height: 220px;
+            margin-top: 50px; cursor: pointer;
+        }
+        .envelope-front {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 100%;
+            background: var(--envelope-color);
+            border-radius: 0 0 10px 10px; z-index: 10;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        /* คำนวณขอบซองอัตโนมัติตามความกว้าง */
+        .envelope-front::before {
+            content: ''; position: absolute; bottom: 0; left: 0; width: 0; height: 0;
+            border-left: 45vw solid transparent; /* ปรับองศาตามจอ */
+            border-right: 45vw solid transparent;
+            border-bottom: 120px solid rgb(255, 135, 159);
+            border-radius: 0 0 10px 10px;
+            max-width: 160px; /* Limit */
+        }
+        
+        /* แก้ไขรอยพับซองให้ Responsive */
+        .envelope-front::before {
+             border-left: calc(min(45vw, 160px)) solid transparent;
+             border-right: calc(min(45vw, 160px)) solid transparent;
+        }
+
+        .envelope-flap {
+            position: absolute; top: 0; left: 0; width: 100%; height: 0;
+            border-left: calc(min(45vw, 160px)) solid transparent;
+            border-right: calc(min(45vw, 160px)) solid transparent;
+            border-top: 110px solid var(--envelope-flap);
+            transform-origin: top; transition: transform 0.6s ease-in-out, z-index 0.6s;
+            z-index: 20;
+            left: 50%; transform: translateX(-50%); /* จัดกึ่งกลาง */
+        }
+        
+        .letter-paper {
+            position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+            width: 90%; height: 350px; /* กระดาษ */
+            background: #fff url('https://www.transparenttextures.com/patterns/cream-paper.png');
+            padding: 25px; box-sizing: border-box;
+            border-radius: 5px;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+            transition: transform 0.8s ease-in-out 0.3s;
+            z-index: 5;
+            font-size: 16px; line-height: 1.8; color: #555;
+        }
+
+        .envelope-container.open .envelope-flap { transform: translateX(-50%) rotateX(180deg); z-index: 1; }
+        .envelope-container.open .letter-paper { transform: translateX(-50%) translateY(-160px); z-index: 30; }
+
+        /* Keyframes */
+        @keyframes floatUp { 0%{transform: translateY(100vh) rotate(0deg); opacity:1;} 100%{transform: translateY(-100px) rotate(360deg); opacity:0;} }
+        @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
+        @keyframes flicker { 0%{transform: translateX(-50%) scale(1); opacity: 0.9;} 100%{transform: translateX(-50%) scale(1.1); opacity: 1;} }
+        @keyframes float { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-20px);} }
+        @keyframes floatHero { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-8px);} }
+
+    </style>
+</head>
+<body>
+
+    <div id="rotate-warning">
+        <h1 style="font-size:50px;">📲</h1>
+        <h3>หมุนมือถือเป็นแนวตั้ง<br>เพื่อความน่ารักนะค้าบ</h3>
+    </div>
+
+    <audio id="bgm" loop>
+        <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mpeg">
+    </audio>
+
+    <div class="bg-hearts" id="bg-hearts"></div>
+
+    <div id="scene-pass" class="section active">
+        <h2 style="font-size: 26px; margin-bottom: 15px; text-align:center;">🔒 วันเกิดแฟนใครน้า?</h2>
+        <img src="https://cdn-icons-png.flaticon.com/512/2927/2927347.png" class="pass-hero-img" alt="cute cake">
+        <div class="pass-dots">
+            <div class="dot" id="d1"></div><div class="dot" id="d2"></div>
+            <div class="dot" id="d3"></div><div class="dot" id="d4"></div>
+        </div>
+        <div id="wrong-msg"></div>
+        <div class="numpad">
+            <button class="num-btn" onclick="typePass(1)">1</button><button class="num-btn" onclick="typePass(2)">2</button><button class="num-btn" onclick="typePass(3)">3</button>
+            <button class="num-btn" onclick="typePass(4)">4</button><button class="num-btn" onclick="typePass(5)">5</button><button class="num-btn" onclick="typePass(6)">6</button>
+            <button class="num-btn" onclick="typePass(7)">7</button><button class="num-btn" onclick="typePass(8)">8</button><button class="num-btn" onclick="typePass(9)">9</button>
+            <button class="num-btn" onclick="clearPass()" style="color:#e91e63;">C</button>
+            <button class="num-btn" onclick="typePass(0)">0</button>
+            <button class="num-btn" onclick="checkPass()" style="background:var(--primary); color:white;">➜</button>
+        </div>
+    </div>
+
+    <div id="scene-cake" class="section">
+        <h1 style="font-size: 32px; margin-bottom: 10px;">Make a Wish! 🎂</h1>
+        <p style="color:#888; font-size:14px; text-align:center;">(เป่าที่ไมค์ หรือ แตะย้ำๆ ที่เค้ก)</p>
+        <div class="cake-wrapper" onclick="manualBlow()">
+            <div class="candles-group">
+                <div class="candle"><div class="flame" id="f1"></div></div>
+                <div class="candle"><div class="flame" id="f2"></div></div>
+                <div class="candle center"><div class="flame" id="f3"></div></div>
+                <div class="candle"><div class="flame" id="f4"></div></div>
+                <div class="candle"><div class="flame" id="f5"></div></div>
+            </div>
+            <img src="https://cdn-icons-png.flaticon.com/512/2682/2682340.png" class="cake-img" alt="birthday cake">
+        </div>
+        <div id="cheer-msg"></div>
+        <button onclick="initMic()" style="margin-top:20px; background:white; border:2px solid var(--primary); color:var(--primary); padding:10px 25px; border-radius:25px; font-weight:bold; cursor:pointer;">🎙️ เปิดไมค์</button>
+    </div>
+
+    <div id="scene-balloons" class="section">
+        <h2 style="font-size: 28px; margin-bottom:40px; text-shadow: 2px 2px white; z-index:100;">จิ้มลูกโป่งให้แตก! 🎈</h2>
+        <div style="position:relative; width:100%; height:100%;">
+            <div style="position:absolute; top:15%; left:10%;">
+                <div class="balloon" style="background:radial-gradient(circle at 30% 30%, #80deea, #00bcd4);" onclick="pop(this)">จิ้มสิ</div>
+                <div class="pop-text">มีความสุขมากๆ นะคะ</div>
+            </div>
+            <div style="position:absolute; top:40%; right:10%;">
+                <div class="balloon" style="background:radial-gradient(circle at 30% 30%, #ffccbc, #ff7043);" onclick="pop(this)">ทางนี้</div>
+                <div class="pop-text">ยิ้มเยอะๆ นะคนเก่ง</div>
+            </div>
+            <div style="position:absolute; top:60%; left:15%;">
+                <div class="balloon" style="background:radial-gradient(circle at 30% 30%, #b39ddb, #7e57c2);" onclick="pop(this)">POP!</div>
+                <div class="pop-text">ขอบคุณที่อยู่ข้างกันนะ</div>
+            </div>
+            <div style="position:absolute; top:25%; left:50%; transform:translateX(-50%);">
+                <div class="balloon" style="background:radial-gradient(circle at 30% 30%, #a5d6a7, #4caf50);" onclick="pop(this)">แตกซะ</div>
+                <div class="pop-text">รักเธอที่สุดเลยยยย ❤️</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="scene-gallery" class="section">
+        <h2 style="font-size: 28px; margin-bottom: 20px;">Memories 📸</h2>
+        <div class="rope">
+            <div class="photo-clip" style="left:5%; transform:rotate(-4deg);">
+                <img src="https://via.placeholder.com/300x400?text=Photo+1" alt="img1">
+            </div>
+            <div class="photo-clip" style="left:50%; transform:translate(-50%) rotate(3deg); z-index:2;">
+                <img src="https://via.placeholder.com/300x400?text=Photo+2" alt="img2">
+            </div>
+            <div class="photo-clip" style="right:5%; transform:rotate(-3deg);">
+                <img src="https://via.placeholder.com/300x400?text=Photo+3" alt="img3">
+            </div>
+        </div>
+        <button class="btn-next" onclick="nextScene('scene-gallery', 'scene-letter')">เปิดจดหมาย 💌</button>
+    </div>
+
+    <div id="scene-letter" class="section">
+        <h2 style="margin-bottom:30px; font-size: 26px;">To My Lovely Girl...</h2>
+        <div class="envelope-container" onclick="openLetter(this)">
+            <div class="envelope-flap"></div>
+            <div class="envelope-front"></div>
+            <div class="letter-paper">
+                <p>
+                    <b style="font-size: 20px; color: var(--primary);">Happy Birthday! 🎉</b><br><br>
+                    สุขสันต์วันเกิดนะคนเก่ง ปีนี้ก็โตขึ้นอีกปีแล้วนะ 
+                    ขอให้เธอมีความสุขมากๆ สุขภาพแข็งแรง
+                    กินอิ่ม นอนหลับ ไม่เจ็บ ไม่ป่วยนะ
+                    <br><br>
+                    ขอบคุณที่เข้ามาเป็นความสดใสให้กันนะ
+                    เค้าดีใจมากๆ ที่มีเธออยู่ข้างๆ
+                    <br><br>
+                    รักเสมอ,<br>
+                    <b>(ชื่อของคุณ)</b>
+                </p>
+            </div>
+        </div>
+        <p style="margin-top: 20px; color: #888; font-size: 14px;">(แตะที่ซองเพื่อเปิด)</p>
+    </div>
+
+    <script>
+        // --- Setup Background Hearts ---
+        function createHeart() {
+            const heart = document.createElement('div');
+            heart.classList.add('heart-bg');
+            heart.innerHTML = ['❤️','💖','✨','🎂'][Math.floor(Math.random()*4)];
+            heart.style.left = Math.random() * 100 + 'vw';
+            heart.style.animationDuration = Math.random() * 5 + 5 + 's';
+            heart.style.opacity = Math.random() * 0.3 + 0.2;
+            heart.style.fontSize = Math.random() * 20 + 15 + 'px';
+            document.getElementById('bg-hearts').appendChild(heart);
+            setTimeout(() => heart.remove(), 10000);
+        }
+        setInterval(createHeart, 400);
+
+        // --- Logic ---
+        const PASS = "1234"; // ⚠️ รหัสผ่าน
+        let input = "";
+        
+        function typePass(n) { if(input.length < 4) { input += n; updateDots(); } }
+        function clearPass() { input = ""; updateDots(); document.getElementById('wrong-msg').innerText = ""; }
+        function updateDots() { for(let i=1; i<=4; i++) document.getElementById('d'+i).className = "dot " + (i<=input.length ? "active" : ""); }
+        function checkPass() {
+            if(input === PASS) {
+                document.getElementById('bgm').play().catch(() => console.log("Music blocked")); 
+                nextScene('scene-pass', 'scene-cake');
+            } else {
+                const msgs = ["รหัสผิดอ่ะ..", "ใบ้: วันสำคัญของเรา", "ลองใหม่อีกทีนะ", "ไม่ใช่เลขนี้น้า"];
+                document.getElementById('wrong-msg').innerText = msgs[Math.floor(Math.random()*msgs.length)];
+                shakePad(); setTimeout(clearPass, 1000);
+            }
+        }
+        function shakePad() {
+            const pad = document.querySelector('.numpad');
+            pad.style.transform = 'translateX(10px)';
+            setTimeout(()=> pad.style.transform = 'translateX(-10px)', 100);
+            setTimeout(()=> pad.style.transform = 'translateX(0)', 200);
+        }
+
+        // --- Cake & Mic ---
+        let mic, analyser, blown = 0;
+        const flames = ['f1','f2','f3','f4','f5'];
+        
+        async function initMic() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = ctx.createAnalyser();
+                mic = ctx.createMediaStreamSource(stream);
+                mic.connect(analyser);
+                loopMic();
+                document.querySelector('button[onclick="initMic()"]').style.display = 'none';
+                document.getElementById('cheer-msg').innerText = "เป่าเลย! ฟู่ววว~";
+            } catch(e) { alert("ไม่เจอไมค์ ใช้เมาส์จิ้มเค้กแทนนะ!"); }
+        }
+        
+        function loopMic() {
+            const data = new Uint8Array(analyser.frequencyBinCount);
+            analyser.getByteFrequencyData(data);
+            let vol = data.reduce((a,b)=>a+b) / data.length;
+            if(vol > 15) doBlow(vol > 50); 
+            if(blown < 5) requestAnimationFrame(loopMic);
+        }
+
+        function doBlow(isStrong) {
+            let active = flames.filter(id => !document.getElementById(id).classList.contains('out'));
+            if(active.length === 0) return;
+
+            const cheers = ["ฮึบๆ!", "เป่าแรงๆ หน่อย!", "อีกนิดเดียว!", "ฟู่วววว!"];
+            document.getElementById('cheer-msg').innerText = cheers[Math.floor(Math.random()*cheers.length)];
+            
+            let target;
+            if(isStrong && active.includes('f3')) target = 'f3';
+            else {
+                 let easy = active.filter(id => id !== 'f3');
+                 if(easy.length > 0) target = easy[Math.floor(Math.random()*easy.length)];
+            }
+            if(target && Math.random() > 0.05) {
+                document.getElementById(target).classList.add('out');
+                blown++;
+                if(blown === 5) finishCake();
+            }
+        }
+        
+        function manualBlow() { doBlow(true); doBlow(true); doBlow(false); }
+
+        function finishCake() {
+            document.getElementById('cheer-msg').innerText = "เย้!! สุขสันต์วันเกิด! 🎉";
+            document.getElementById('cheer-msg').style.color = "#e91e63";
+            confetti({ particleCount: 200, spread: 80, origin: { y: 0.6 }, colors: ['#ff8fa3', '#ffd700', '#ffffff'] });
+            setTimeout(() => nextScene('scene-cake', 'scene-balloons'), 3500);
+        }
+
+        // --- Balloons ---
+        let popped = 0;
+        function pop(el) {
+            if(!el.classList.contains('popped')) {
+                el.classList.add('popped');
+                popped++;
+                confetti({ particleCount: 40, spread: 60, origin: { x: el.getBoundingClientRect().left/window.innerWidth, y: el.getBoundingClientRect().top/window.innerHeight } });
+                if(popped === 4) setTimeout(() => nextScene('scene-balloons', 'scene-gallery'), 2500);
+            }
+        }
+
+        // --- Navigation ---
+        function openLetter(el) { el.classList.add('open'); }
+        function nextScene(from, to) {
+            document.getElementById(from).classList.remove('active');
+            document.getElementById(to).classList.add('active');
+        }
+    </script>
+</body>
+</html>
